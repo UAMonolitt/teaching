@@ -1,4 +1,4 @@
-import jwt, httpx, bcrypt, asyncio
+import jwt, httpx, bcrypt, asyncio, aiosqlite
 from fastapi import HTTPException, status, Depends
 from security import settings
 from fastapi.security import OAuth2PasswordBearer
@@ -6,6 +6,7 @@ from typing import Annotated
 from datetime import datetime, UTC, timedelta
 from selenium.webdriver.chrome.webdriver import WebDriver
 from selenium.webdriver.chrome.options import Options
+from schemas import SScreenshot
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl='/login')
 
@@ -16,7 +17,7 @@ options.add_argument('--headless=new')
 
 driver = WebDriver(options=options)
 
-async def check_jwt(token: str):
+async def check_jwt(token: str) -> dict:
     try:
         payload = jwt.decode(token, key=settings.SECRET_KEY, algorithms=[settings.ALGORITHM])
     except jwt.ExpiredSignatureError:
@@ -28,13 +29,17 @@ async def check_jwt(token: str):
 async def get_user_info(token: OAuth2Bearer) -> dict:
     payload = await check_jwt(token)
     if not payload:
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail='wrong token')
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail='wrong token', headers={'WWW-Authenticate': 'bearer'})
+    async with aiosqlite.connect('database.db') as session:
+        ids = await session.execute_fetchall('SELECT id FROM users')
+        if not int(payload['sub']) in [int(*i) for i in ids]:
+            raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail='wrong token1', headers={'WWW-Authenticate': 'bearer'})
     return payload
 
 CurrentUser = Annotated[dict, Depends(get_user_info)]
 
 
-async def get_jwt(user_id: int):
+async def get_jwt(user_id: int) -> str:
     expire = datetime.now(UTC) + timedelta(minutes=settings.EXPIRE_MINUTES)
     payload={
         'sub': str(user_id),
@@ -43,11 +48,11 @@ async def get_jwt(user_id: int):
     token = jwt.encode(payload=payload, key=settings.SECRET_KEY, algorithm=settings.ALGORITHM)
     return token
 
-def hash_pass(password: str):
+def hash_pass(password: str) -> str:
     salt = bcrypt.gensalt()
-    return bcrypt.hashpw(password=password.encode('utf-8'), salt=salt)
+    return bcrypt.hashpw(password=password.encode('utf-8'), salt=salt).decode('utf-8')
 
-async def add_image(screenshot_name: str | None = None) -> dict:
+async def add_image(screenshot_name: str | None = None, delete_after: float | None = None) -> dict:
     url = "https://api.imgbb.com/1/upload"
 
 # Define your data payload here instead of the URL
@@ -59,12 +64,15 @@ async def add_image(screenshot_name: str | None = None) -> dict:
     if screenshot_name:
         payload['name'] = screenshot_name
 
+    if delete_after:
+        payload['expiration'] = delete_after
+
     response = {}
     async with httpx.AsyncClient() as client:
         response = await client.post(url, data=payload)
     return response.json()['data']
 
-def _get_screenshot(url: str):
+def _get_screenshot(url: str) -> str:
     if not (url.startswith('http://') or url.startswith('https://')):
         url = f'http://{url}'
     try:
@@ -74,5 +82,5 @@ def _get_screenshot(url: str):
         return False
     return driver.get_screenshot_as_base64()
 
-async def get_screenshot(url: str):
+async def get_screenshot(url: str) -> str:
     return await asyncio.to_thread(_get_screenshot, url=url)
