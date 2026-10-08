@@ -52,7 +52,7 @@ def hash_pass(password: str) -> str:
     salt = bcrypt.gensalt()
     return bcrypt.hashpw(password=password.encode('utf-8'), salt=salt).decode('utf-8')
 
-async def add_image(user_id: int, screenshot_info: SScreenshot, screenshot_base64: str) -> dict:
+def add_image(user_id: int, screenshot_info: SScreenshot, screenshot_base64: str) -> dict:
     url = "https://api.imgbb.com/1/upload"
 
 # Define your data payload here instead of the URL
@@ -68,8 +68,8 @@ async def add_image(user_id: int, screenshot_info: SScreenshot, screenshot_base6
         payload['name'] = f'User id: {user_id}. {url}'
 
     response = {}
-    async with httpx.AsyncClient() as client:
-        response = await client.post(url, data=payload)
+    with httpx.Client() as client:
+        response = client.post(url, data=payload)
     return response.json()['data']
 
 def _get_screenshot(url: str) -> str:
@@ -82,23 +82,24 @@ def _get_screenshot(url: str) -> str:
             driver.fullscreen_window()
         except:
             return False
-    return driver.get_screenshot_as_base64()
+    screenshot = driver.get_screenshot_as_base64()
+    return screenshot
 
-async def get_screenshot(url: str) -> str:
+def get_screenshot(url: str) -> str:
     if not (url.startswith('https://') or url.startswith('http://')):
         http_url = f'http://{url}'
         https_url = f'https://{url}'
-        async with httpx.AsyncClient() as client:
+        with httpx.Client() as client:
             try:
-                response_http = await client.head(http_url)
+                response_http = client.head(http_url)
                 if response_http.status_code == 200:
                     url = http_url
             except:
                 try:
-                    response_https = await client.head(https_url)
+                    response_https = client.head(https_url)
                     if response_https.status_code == 200:
                         url = https_url
                 except: 
                     return False
 
-    return await asyncio.to_thread(_get_screenshot, url=url)
+    return _get_screenshot(url)

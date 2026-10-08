@@ -7,6 +7,17 @@ client = TestClient(app=app)
 
 standart_payload = {'screenshot_name':'aas', 'url': 'https://google.com'}
 
+@pytest.fixture(scope='module')
+def register_info():
+    info = {'username': 'UAMonolit', 'password': 'Sigma228'}
+    client.post('/register', json=info)
+    return info
+
+@pytest.fixture(scope='module')
+def token(register_info):
+    response = client.post('/login', json=register_info)
+    return response.json()['token']
+
 def test_new_db():
     token = {}
     with sqlite3.connect('database.db') as cursor:
@@ -48,7 +59,7 @@ def test_login(username, password, status_code):
     param(standart_payload | {'url': 'https://youtube.com'}, id='another website (youtube.com)'),
     param(standart_payload | {'url': 'youtube.com'}, id='another website (youtube.com) without https')
     ))
-def test_no_error_on_save_screenshot(payload: dict):
+def test_no_error_on_save_screenshot(token, payload: dict):
     response = client.post('/save_screenshot', json=payload, headers={'Authorization': f'Bearer {token}'})
     assert response.status_code == 200
 
@@ -62,18 +73,15 @@ def test_no_error_on_save_screenshot(payload: dict):
     param(standart_payload | {'url': ''}, id='empty string on url'),
     param(standart_payload | {'url': '           '}, id='only whitespaces url'),
 ))
-def test_422_error_on_save_screenshot(payload: dict):
-    global token
+def test_422_error_on_save_screenshot(token, payload: dict):
     response = client.post('/save_screenshot', json=payload, headers={'Authorization': f'Bearer {token}'})
     assert response.status_code == 422
-
 
 @pytest.mark.parametrize('payload', (
         param(standart_payload | {'url': 'https://pop0-1mcndjaasdl.com'}, id='Non-existing website'),
         param(standart_payload | {'url': 'pop0-1mcndjaasdl.com'}, id='Non-existing website without https'),
 ))
-def test_404_error_on_save_screenshot(payload: dict):
-    global token
+def test_404_error_on_save_screenshot(token, payload: dict):
     response = client.post('/save_screenshot', json=payload, headers={'Authorization': f'Bearer {token}'})
     assert response.status_code == 404
 

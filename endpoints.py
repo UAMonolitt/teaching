@@ -1,21 +1,21 @@
 from fastapi import APIRouter, HTTPException, status
 from schemas import SRegister, SLogin, SScreenshot
 from datetime import datetime, UTC
-import aiosqlite, bcrypt
+import aiosqlite, bcrypt, sqlite3
 from functions import add_image, get_jwt, CurrentUser, hash_pass, get_screenshot
 
 router = APIRouter()
 
 @router.post('/save_screenshot')
-async def save_screenshot_endpoint(user_info: CurrentUser, screenshot_info: SScreenshot):
+def save_screenshot_endpoint(user_info: CurrentUser, screenshot_info: SScreenshot):
     user_id = int(user_info['sub'])
-    screenshot_base64 = await get_screenshot(screenshot_info.url)
+    screenshot_base64 = get_screenshot(screenshot_info.url)
     if not screenshot_base64:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail='No website with such URL.')
-    async with aiosqlite.connect('database.db') as session:
-        json_result = await add_image(user_id, screenshot_info, screenshot_base64)
-        await session.execute('INSERT INTO screenshots VALUES (?, ?, ?, ?, ?, ?)', (screenshot_info.screenshot_name, datetime.now(UTC), json_result['url'], screenshot_info.url, user_id, screenshot_info.delete_after))
-        await session.commit()
+    with sqlite3.connect('database.db') as session:
+        json_result = add_image(user_id, screenshot_info, screenshot_base64)
+        session.execute('INSERT INTO screenshots VALUES (?, ?, ?, ?, ?, ?)', (screenshot_info.screenshot_name, datetime.now(UTC), json_result['url'], screenshot_info.url, user_id, screenshot_info.delete_after))
+        session.commit()
     return json_result
 
 @router.post('/register')

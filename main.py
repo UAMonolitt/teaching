@@ -6,6 +6,8 @@ import logging
 
 logging.basicConfig(level=logging.INFO)
 
+webdriver = None
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     async with aiosqlite.connect('database.db') as cursor:
