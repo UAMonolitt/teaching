@@ -1,8 +1,9 @@
 from fastapi.testclient import TestClient
 from main import app
-import pytest, sqlite3, random
+import pytest, random
 from pytest import param
-
+#make dependency override later
+#fix tests
 client = TestClient(app=app)
 
 standart_payload = {'screenshot_name':'aas', 'url': 'https://google.com'}
@@ -17,14 +18,6 @@ def register_info():
 def token(register_info):
     response = client.post('/login', json=register_info)
     return response.json()['token']
-
-def test_new_db():
-    token = {}
-    with sqlite3.connect('database.db') as cursor:
-        cursor.execute('DROP TABLE IF EXISTS users')
-        cursor.execute('DROP TABLE IF EXISTS screenshots')
-        cursor.execute('CREATE TABLE IF NOT EXISTS users(id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT, password TEXT, total_screenshots INT, join_date TEXT)')
-        cursor.execute('CREATE TABLE IF NOT EXISTS screenshots(screenshot_name TEXT, screenshot_date TEXT, image_url TEXT, website_url TEXT, user_id INTEGER, delete_after REAL)')    
 
 @pytest.mark.parametrize('username, password, status_code', (
         pytest.param('UAMonolit', 'Sigma228', 200, id='New user'),

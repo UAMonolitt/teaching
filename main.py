@@ -1,22 +1,22 @@
 from fastapi import FastAPI
 from contextlib import asynccontextmanager
-import aiosqlite
-from endpoints import router
+from screenshots_endpoints import router as screenshots_router
+from user_endpoints import router as user_router
 import logging
+from database import engine
+from models import Base
 
 logging.basicConfig(level=logging.INFO)
 
-webdriver = None
-
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    async with aiosqlite.connect('database.db') as cursor:
-        await cursor.execute('CREATE TABLE IF NOT EXISTS users(id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT, password TEXT, total_screenshots INT, join_date TEXT)')
-        await cursor.execute('CREATE TABLE IF NOT EXISTS screenshots(screenshot_name TEXT, screenshot_date TEXT, image_url TEXT, website_url TEXT, user_id INTEGER, delete_after REAL)')
-        logging.info('Program start')
-        yield
-        logging.info('Program end')
+    async with engine.begin() as connection:
+        await connection.run_sync(Base.metadata.create_all)
+    print('Program start')
+    yield
+    print('Program end')
         
 app = FastAPI(lifespan=lifespan)
 
-app.include_router(router)
+app.include_router(user_router)
+app.include_router(screenshots_router)

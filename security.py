@@ -5,6 +5,7 @@ class Settings(BaseSettings):
     SECRET_KEY: str
     ALGORITHM: str
     EXPIRE_MINUTES: int
+    DATABASE_URL: str
 
     model_config = SettingsConfigDict(env_file='.env', env_file_encoding='utf-8')
 
