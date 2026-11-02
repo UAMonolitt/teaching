@@ -1,10 +1,10 @@
 from fastapi import FastAPI
 from contextlib import asynccontextmanager
-from screenshots_endpoints import router as screenshots_router
-from user_endpoints import router as user_router
+from src.screenshots_endpoints import router as screenshots_router
+from src.user_endpoints import router as user_router
 import logging
-from database import engine
-from models import Base
+from src.database import engine
+from src.models import Base
 
 logging.basicConfig(level=logging.INFO)
 

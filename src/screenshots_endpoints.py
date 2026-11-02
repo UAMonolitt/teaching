@@ -1,8 +1,8 @@
 from fastapi import APIRouter, HTTPException, status
-from schemas import SNewScreenshot, SScreenshots, SScreenshots, SEditScreenshots
-from functions import save_screenshot, CurrentUser
-from database import Session
-from models import User, Screenshot
+from src.schemas import SNewScreenshot, SScreenshots, SScreenshots, SEditScreenshots
+from src.functions import save_screenshot, CurrentUser
+from src.database import Session
+from src.models import User, Screenshot
 from sqlalchemy import select, update, not_
 from sqlalchemy.orm import selectinload
 
@@ -16,12 +16,10 @@ async def save_screenshot_endpoint(screenshot_info: SNewScreenshot, session: Ses
     if not user:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail='User not found!')
     image_url = await save_screenshot(user, screenshot_info)
-    new_screenshot = Screenshot(name=screenshot_info.name, image_url=image_url, website_url=screenshot_info.url, user=user)
-    screenshot_info.name = screenshot_info.name.replace(".", "")
-    if not screenshot_info.name:
-        screenshot_info.name = f'User_id={user_id}_{screenshot_info.url}'
-    if not image_url:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail='bad request!')
+    new_screenshot = Screenshot(name=screenshot_info.screenshot_name, image_url=image_url, website_url=screenshot_info.url, user=user)
+    screenshot_info.screenshot_name = screenshot_info.screenshot_name.replace(".", "")
+    if not screenshot_info.screenshot_name:
+        screenshot_info.screenshot_name = f'User_id={user_id}_{screenshot_info.url}'
     user.screenshots.append(new_screenshot)
     await session.commit()
     return {'msg': 'success'}

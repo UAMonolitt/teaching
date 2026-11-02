@@ -1,5 +1,5 @@
 from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine, AsyncSession
-from security import settings
+from src.security import settings
 from fastapi import Depends
 from typing import Annotated
 

@@ -1,10 +1,10 @@
 from fastapi import APIRouter, HTTPException, status
-from security import settings
-from functions import Session, CurrentUser, get_jwt, hash_pass
+from src.security import settings
+from src.functions import Session, CurrentUser, get_jwt, hash_pass
 from sqlalchemy import select, not_
 from sqlalchemy.orm import selectinload
-from models import User, Screenshot
-from schemas import SRegister, SLogin, SNewPassword, SAccountSettings, SDeleteAccount
+from src.models import User, Screenshot
+from src.schemas import SRegister, SLogin, SNewPassword, SAccountSettings, SDeleteAccount
 import bcrypt
 
 router = APIRouter()

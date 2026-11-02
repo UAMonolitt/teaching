@@ -1,27 +1,20 @@
 import jwt, httpx, bcrypt, asyncio
 from fastapi import HTTPException, status, Depends
-from security import settings
+from src.security import settings
 from fastapi.security import OAuth2PasswordBearer
 from typing import Annotated
 from datetime import datetime, UTC, timedelta
 from selenium.webdriver.chrome.webdriver import WebDriver
 from selenium.webdriver.chrome.options import Options
-from schemas import SNewScreenshot
+from src.schemas import SNewScreenshot
 from sqlalchemy import select
 from sqlalchemy.orm import selectinload
-from database import Session
-from models import User
+from src.database import Session
+from src.models import User
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl='/login')
 
 OAuth2Bearer = Annotated[str, Depends(oauth2_scheme)]
-
-options = Options()
-options.add_argument('--headless=new')
-
-driver = WebDriver(options=options)
-
-driver.close()
 
 async def check_jwt(token: str) -> dict:
     try:
@@ -58,23 +51,26 @@ def hash_pass(password: str) -> str:
     salt = bcrypt.gensalt()
     return bcrypt.hashpw(password=password.encode('utf-8'), salt=salt).decode('utf-8')
 
-def _save_screenshot(user: User, screenshot_info: SNewScreenshot) -> bool | None:
+def _save_screenshot(user: User, screenshot_info: SNewScreenshot) -> bool:
     screenshot_url = f'pictures/user_id_{user.id}-{screenshot_info.screenshot_name}-#{len(user.screenshots)}.png'
+    options = Options()
+    options.add_argument('--headless=new')
+    driver=WebDriver(options=options)
     try:
-        print(1)
         driver.get(screenshot_info.url)
         driver.fullscreen_window()
     except:
         try:
-            print(2)
             driver.get(f'https://{screenshot_info.url}')
             driver.fullscreen_window()
         except:
-            return False
+            driver.close()
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail='No website with such url')
     driver.save_screenshot(screenshot_url)
+    driver.close()
     return screenshot_url
 
-async def save_screenshot(user: User, screenshot_info: SNewScreenshot) -> bool | None:
+async def save_screenshot(user: User, screenshot_info: SNewScreenshot) -> bool:
     if not (screenshot_info.url.startswith('https://') or screenshot_info.url.startswith('http://')):
         http_url = f'http://{screenshot_info.url}'
         https_url = f'https://{screenshot_info.url}'
@@ -89,6 +85,5 @@ async def save_screenshot(user: User, screenshot_info: SNewScreenshot) -> bool |
                     if response_https.status_code == 200:
                         screenshot_info.url = https_url
                 except: 
-                    print(3)
-                    return False
+                    raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail='No website with such url')
     return await asyncio.to_thread(_save_screenshot, user, screenshot_info)

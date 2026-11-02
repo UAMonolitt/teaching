@@ -1,0 +1,6 @@
+[tool.pytest.ini_options]
+addopts="-v --strict-markers"
+testpaths=["tests"]
+markers=["smoke: дымовые тесты"]
+asyncio_mode="auto"
+asyncio_default_test_loop_scope="function"
